@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ACCOUNT_HOLDER
+  ADMIN
+  AUDITOR
+}
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  FROZEN
+  CLOSED
+}
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER
+}
+enum TransactionStatus {
+  POSTED
+  REJECTED
+}
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique
+  fullName String
+  passwordHash String
+  role Role @default(ACCOUNT_HOLDER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  accounts Account[]
+  auditEvents AuditEvent[]
+}
+model Account {
+  id String @id @default(uuid()) @db.Uuid
+  ownerId String @db.Uuid
+  owner User @relation(fields: [ownerId], references: [id])
+  label String
+  status AccountStatus @default(PENDING)
+  balancePaise BigInt @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  entries LedgerEntry[]
+  @@index([ownerId, status])
+}
+model MoneyTransaction {
+  id String @id @default(uuid()) @db.Uuid
+  type TransactionType
+  status TransactionStatus @default(POSTED)
+  amountPaise BigInt
+  fromAccountId String? @db.Uuid
+  toAccountId String? @db.Uuid
+  initiatedBy String @db.Uuid
+  idempotencyKey String @unique
+  requestHash String
+  description String?
+  createdAt DateTime @default(now())
+  entries LedgerEntry[]
+}
+model LedgerEntry {
+  id String @id @default(uuid()) @db.Uuid
+  transactionId String @db.Uuid
+  transaction MoneyTransaction @relation(fields: [transactionId], references: [id])
+  accountId String @db.Uuid
+  account Account @relation(fields: [accountId], references: [id])
+  direction String
+  amountPaise BigInt
+  createdAt DateTime @default(now())
+  @@index([accountId, createdAt])
+}
+model AuditEvent {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String? @db.Uuid
+  actor User? @relation(fields: [actorId], references: [id])
+  action String
+  entityType String
+  entityId String?
+  details Json
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}

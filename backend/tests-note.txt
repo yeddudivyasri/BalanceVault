@@ -1,0 +1,1 @@
+Add PostgreSQL integration tests for duplicate idempotency keys, concurrent transfers, overdraft prevention, RBAC, and ownership before submission. This starter does not yet contain those tests.
